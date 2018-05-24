@@ -1,27 +1,41 @@
-const TESTS_PATH = "./../../../tests";
+const cwd = process.cwd();
+const TESTS_PATH = `${cwd}/../../../tests`;
 const fs = require("fs");
 const html2json = require("html2json").html2json;
-
 const files = fs.readdirSync(TESTS_PATH);
-var helpers = {
-  questions: content => {
-    const matches = content.match(
-      /<div class=\"questions\">[\s\S]*<\/div>[\s\S]*<div class=\"clear\">/g
-    );
-    if (matches.length > 0) {
-      const questions = matches[0].replace('<div class="clear">', "");
-      return questions;
+const helpers = require(`${cwd}/helpers.js`);
+
+let schema = {
+  question: {
+    compare: obj => obj.tag === "div" && obj.attr.class === "question2",
+    return: obj => obj.child[0].text.trim()
+  },
+  explanation: {
+    compare: obj => obj.tag === "div" && obj.attr.class === "explanation",
+    return: obj => obj.child[0].text.trim()
+  },
+  answers: {
+    compare: obj => obj.tag === "div" && obj.attr.class === "answer",
+    return: obj =>
+      obj.child
+        .filter(node => node.tag === "div" && node.attr.class === "text")
+        .map(node => node.child)[0][1]
+        .child[1].child.filter(node => node.tag === "tr")
+        .map(node => node.child),
+    child: {
+      answer: {
+        compare: obj => obj.tag === "span" && obj.attr.class === "answers",
+        return: obj => obj.child[0].text.trim()
+      },
+      correct: {
+        compare: obj =>
+          obj.tag === "div" &&
+          (~obj.attr.class.indexOf("icheckbox_minimal-red") ||
+            ~obj.attr.class.indexOf("icheckbox_minimal")),
+        return: obj =>
+          ~obj.attr.class.indexOf("icheckbox_minimal-red") ? true : false
+      }
     }
-    return null;
-  },
-  question: content => {
-    return content.split('<div class="questiondiv">');
-    // const matches = content.match(/<div class=\"questiondiv\">[\s\S]*<\/div>/g);
-    // return matches;
-  },
-  detail: content => {
-    const matches = content.match(/<div class=\"question2\">[\s\S]*<\/div>/g);
-    return matches;
   }
 };
 
@@ -29,22 +43,26 @@ files.forEach(file => {
   if (~file.indexOf(".html")) {
     const name = file.replace(".html", "");
     const filePath = `${TESTS_PATH}/${file}`;
-    const content = fs.readFileSync(filePath).toString();
-    const s = helpers.questions(content);
-    const questions = helpers.question(s);
-    questions.forEach(q => {
-      console.log(helpers.detail(q));
-    });
-    // console.log(questions.length);
-    return;
-    // const matches = content.match(
-    //   /<div class=\"questions\">[\s\S]*<\/div>[\s\S]*<div class=\"clear\">/g
-    // );
-    // if (matches.length > 0) {
-    //   const questions = matches[0].replace('<div class="clear">', "");
-    //   const json = html2json(questions);
-    //   console.log(json);
-    // }
-    return;
+    let sample = fs.readFileSync(filePath).toString();
+
+    while (~sample.indexOf("\t")) {
+      sample = sample.replace("\t", " ");
+    }
+    while (~sample.indexOf("\n")) {
+      sample = sample.replace("\n", " ");
+    }
+
+    sample = helpers.questions(sample);
+    const questions = helpers.question(sample);
+    console.log(questions.length);
+    for (let question of questions) {
+      let nodes = html2json(question).child;
+      nodes = nodes.filter(node => node.node === "element");
+
+      const output = helpers.getObj(nodes, schema);
+      // console.log(nodes);
+      console.log("----------------------------------------------------------");
+      console.log("result:", output);
+    }
   }
 });
