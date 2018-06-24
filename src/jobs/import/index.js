@@ -2,7 +2,6 @@ const cwd = process.cwd();
 const TESTS_PATH = `${cwd}/../../../tests`;
 const fs = require("fs");
 const html2json = require("html2json").html2json;
-const files = fs.readdirSync(TESTS_PATH);
 const helpers = require(`${cwd}/helpers.js`);
 
 let schema = {
@@ -39,30 +38,73 @@ let schema = {
   }
 };
 
-files.forEach(file => {
-  if (~file.indexOf(".html")) {
-    const name = file.replace(".html", "");
-    const filePath = `${TESTS_PATH}/${file}`;
-    let sample = fs.readFileSync(filePath).toString();
+function main(params) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const files = fs.readdirSync(TESTS_PATH);
+      const mongo = await require(`${cwd}/mongo/mongo.js`)(
+        "mongodb://localhost:27017",
+        "testhub"
+      );
 
-    while (~sample.indexOf("\t")) {
-      sample = sample.replace("\t", " ");
-    }
-    while (~sample.indexOf("\n")) {
-      sample = sample.replace("\n", " ");
-    }
+      const result = await mongo.insertOne("exams", {
+        user_id: "1",
+        title: "CA DMV",
+        tags: ["dmv", "driver license"],
+        description:
+          "600 common questions frequently appear in Driver License Writing tests.",
+        background:
+          "https://www.virtualdriveoftexas.com/wp-content/uploads/2017/05/texas-drivers-license.jpg",
+        settings: {
+          total_questions: 10,
+          show_answer: true
+        },
+        feedback: {
+          likes: 0,
+          comments: []
+        }
+      });
+      const exam = result.ops[0];
+      exam.questions = [];
+      for (let file of files) {
+        if (~file.indexOf(".html")) {
+          const name = file.replace(".html", "");
+          const filePath = `${TESTS_PATH}/${file}`;
+          let sample = fs.readFileSync(filePath).toString();
 
-    sample = helpers.questions(sample);
-    const questions = helpers.question(sample);
-    console.log(questions.length);
-    for (let question of questions) {
-      let nodes = html2json(question).child;
-      nodes = nodes.filter(node => node.node === "element");
+          while (~sample.indexOf("\t")) {
+            sample = sample.replace("\t", " ");
+          }
+          while (~sample.indexOf("\n")) {
+            sample = sample.replace("\n", " ");
+          }
 
-      const output = helpers.getObj(nodes, schema);
-      // console.log(nodes);
+          sample = helpers.questions(sample);
+          const rawQuestions = helpers.question(sample);
+          for (let rawQuestion of rawQuestions) {
+            let nodes = html2json(rawQuestion).child;
+            nodes = nodes.filter(node => node.node === "element");
+
+            const output = helpers.getObj(nodes, schema);
+            if (!!output.question) {
+              exam.questions.push(output);
+              output.exam_id = exam._id;
+              await mongo.insertOne("questions", output);
+
+              console.log(exam.questions.length);
+            }
+          }
+        }
+      }
       console.log("----------------------------------------------------------");
-      console.log("result:", output);
+      // const result = mongo.insertOne("exams", exam);
+      resolve(result);
+    } catch (err) {
+      reject(err);
     }
-  }
+  });
+}
+
+main().then(() => {
+  console.log("done");
 });

@@ -1,1 +1,4 @@
 src/server/node_modules/**/*
+src/client/node_modules/**/*
+src/mobile/node_modules/**/*
+src/jobs/import/node_modules/**/*

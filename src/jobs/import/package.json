@@ -10,5 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "html2json": "^1.0.2"
+  },
+  "devDependencies": {
+    "mongodb": "^3.1.0-beta4"
   }
 }
