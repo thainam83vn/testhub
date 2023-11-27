@@ -19,12 +19,12 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "antd-mobile": "^2.2.0",
+    "antd-mobile": "^5.0.0",
     "axios": "^0.18.0",
-    "expo": "^27.0.1",
+    "expo": "^45.0.0",
     "react": "16.3.1",
-    "react-native": "~0.55.2",
-    "react-native-elements": "^0.19.1",
+    "react-native": "~0.60.0",
+    "react-native-elements": "^1.0.0",
     "react-native-searchbar": "^1.15.0",
     "react-native-ui-kitten": "^3.0.1",
     "react-navigation": "^2.3.1",
